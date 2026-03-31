@@ -35,6 +35,9 @@ dependencies:
   injectable: ^2.5.0
   intl: ^0.20.2
 
+  # S
+  shimmer: ^3.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

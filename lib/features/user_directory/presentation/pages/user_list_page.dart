@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:techfusion_code_challenge/core/bloc/theme_bloc.dart';
 import '../bloc/user_bloc.dart';
 import '../widgets/user_list_item.dart';
+import '../widgets/user_list_item_skeleton.dart';
 
 class UserListPage extends StatefulWidget {
   const UserListPage({super.key});
@@ -116,7 +117,10 @@ class _UserListPageState extends State<UserListPage> {
                 switch (state.status) {
                   case UserStatus.loading:
                     if (state.users.isEmpty) {
-                      return const Center(child: CircularProgressIndicator());
+                      return ListView.builder(
+                        itemCount: 10,
+                        itemBuilder: (context, index) => const UserListItemSkeleton(),
+                      );
                     }
                     return _buildList(state);
                   case UserStatus.success:
@@ -192,10 +196,7 @@ class _UserListPageState extends State<UserListPage> {
         itemCount: showBottomLoader ? state.filteredUsers.length + 1 : state.filteredUsers.length,
         itemBuilder: (context, index) {
           if (index >= state.filteredUsers.length) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Center(child: CircularProgressIndicator()),
-            );
+            return const UserListItemSkeleton();
           }
           return UserListItem(user: state.filteredUsers[index]);
         },
