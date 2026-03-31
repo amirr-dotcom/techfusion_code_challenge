@@ -1,0 +1,18 @@
+{
+  "app_title": "User Directory",
+  "search_hint": "Search by name...",
+  "gender_all": "All",
+  "gender_male": "Male",
+  "gender_female": "Female",
+  "sort_az": "Sort A-Z",
+  "sort_za": "Sort Z-A",
+  "no_users_found": "No users found",
+  "error_loading": "Error loading users",
+  "retry": "Retry",
+  "details": "Details",
+  "email": "Email",
+  "phone": "Phone",
+  "location": "Location",
+  "dob": "Date of Birth",
+  "age": "Age"
+}
