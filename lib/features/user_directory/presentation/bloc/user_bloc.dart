@@ -58,7 +58,6 @@ class UserBloc extends Bloc<UserEvent, UserState> {
       
       _applyLocalFilters(emit);
     } catch (e) {
-      print("asjidas ${e}");
       emit(state.copyWith(status: UserStatus.failure));
     }
   }
