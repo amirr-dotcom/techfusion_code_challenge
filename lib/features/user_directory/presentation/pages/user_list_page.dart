@@ -14,35 +14,12 @@ class UserListPage extends StatefulWidget {
 }
 
 class _UserListPageState extends State<UserListPage> {
-  final _scrollController = ScrollController();
   final _searchController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-  }
-
-  @override
   void dispose() {
-    _scrollController
-      ..removeListener(_onScroll)
-      ..dispose();
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _onScroll() {
-    if (_isBottom) {
-      context.read<UserBloc>().add(const FetchUsers());
-    }
-  }
-
-  bool get _isBottom {
-    if (!_scrollController.hasClients) return false;
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    final currentScroll = _scrollController.offset;
-    return currentScroll >= (maxScroll * 0.9);
   }
 
   @override
@@ -116,13 +93,10 @@ class _UserListPageState extends State<UserListPage> {
               builder: (context, state) {
                 switch (state.status) {
                   case UserStatus.loading:
-                    if (state.users.isEmpty) {
-                      return ListView.builder(
-                        itemCount: 10,
-                        itemBuilder: (context, index) => const UserListItemSkeleton(),
-                      );
-                    }
-                    return _buildList(state);
+                    return ListView.builder(
+                      itemCount: 10,
+                      itemBuilder: (context, index) => const UserListItemSkeleton(),
+                    );
                   case UserStatus.success:
                     if (state.filteredUsers.isEmpty) {
                       return Center(child: Text('no_users_found'.tr()));
@@ -147,8 +121,80 @@ class _UserListPageState extends State<UserListPage> {
               },
             ),
           ),
+          _buildPaginationControls(),
         ],
       ),
+    );
+  }
+
+  Widget _buildPaginationControls() {
+    return BlocBuilder<UserBloc, UserState>(
+      builder: (context, state) {
+        if (state.searchQuery.isNotEmpty) return const SizedBox.shrink();
+        
+        final currentPage = (state.skip / 10).floor() + 1;
+        
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 4,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: state.skip > 0 && state.status != UserStatus.loading
+                        ? () => context.read<UserBloc>().add(PreviousPage())
+                        : null,
+                    icon: const Icon(Icons.chevron_left),
+                    label: const Text('Prev'),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Page $currentPage',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: !state.hasReachedMax && state.status != UserStatus.loading
+                        ? () => context.read<UserBloc>().add(NextPage())
+                        : null,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Next'),
+                        const Icon(Icons.chevron_right),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -185,19 +231,13 @@ class _UserListPageState extends State<UserListPage> {
   }
 
   Widget _buildList(UserState state) {
-    final bool showBottomLoader = !state.hasReachedMax && state.searchQuery.isEmpty;
-
     return RefreshIndicator(
       onRefresh: () async {
         context.read<UserBloc>().add(RefreshUsers());
       },
       child: ListView.builder(
-        controller: _scrollController,
-        itemCount: showBottomLoader ? state.filteredUsers.length + 1 : state.filteredUsers.length,
+        itemCount: state.filteredUsers.length,
         itemBuilder: (context, index) {
-          if (index >= state.filteredUsers.length) {
-            return const UserListItemSkeleton();
-          }
           return UserListItem(user: state.filteredUsers[index]);
         },
       ),

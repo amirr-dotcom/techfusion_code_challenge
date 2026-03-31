@@ -40,3 +40,7 @@ class UpdateSorting extends UserEvent {
   @override
   List<Object?> get props => [sortOrder];
 }
+
+class NextPage extends UserEvent {}
+
+class PreviousPage extends UserEvent {}

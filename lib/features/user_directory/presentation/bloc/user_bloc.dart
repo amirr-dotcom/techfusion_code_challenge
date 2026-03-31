@@ -18,25 +18,15 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     on<UpdateSearchQuery>(_onUpdateSearchQuery);
     on<UpdateGenderFilter>(_onUpdateGenderFilter);
     on<UpdateSorting>(_onUpdateSorting);
+    on<NextPage>(_onNextPage);
+    on<PreviousPage>(_onPreviousPage);
   }
 
   Future<void> _onFetchUsers(FetchUsers event, Emitter<UserState> emit) async {
-    // 1. Guard: Prevent concurrent fetches or fetching after reaching max
     if (state.status == UserStatus.loading && !event.isInitialFetch) return;
-    if (state.hasReachedMax && !event.isInitialFetch) return;
 
     try {
-      if (event.isInitialFetch) {
-        emit(state.copyWith(
-          status: UserStatus.loading, 
-          users: [], 
-          filteredUsers: [], 
-          hasReachedMax: false, 
-          skip: 0,
-        ));
-      } else {
-        emit(state.copyWith(status: UserStatus.loading));
-      }
+      emit(state.copyWith(status: UserStatus.loading));
 
       final List<User> users = await getUsers(
         limit: _limit,
@@ -44,16 +34,10 @@ class UserBloc extends Bloc<UserEvent, UserState> {
         gender: state.selectedGender == 'all' ? null : state.selectedGender,
       );
 
-      // 2. Spread operator: Safer way to concatenate lists and avoid concurrent modification issues
-      final List<User> allUsers = event.isInitialFetch 
-          ? List<User>.from(users) 
-          : [...state.users, ...users];
-
       emit(state.copyWith(
         status: UserStatus.success,
-        users: allUsers,
+        users: users, // In page-based pagination, we replace the list
         hasReachedMax: users.length < _limit,
-        skip: state.skip + users.length,
       ));
       
       _applyLocalFilters(emit);
@@ -62,7 +46,20 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     }
   }
 
+  Future<void> _onNextPage(NextPage event, Emitter<UserState> emit) async {
+    if (state.hasReachedMax || state.status == UserStatus.loading) return;
+    emit(state.copyWith(skip: state.skip + _limit));
+    add(const FetchUsers());
+  }
+
+  Future<void> _onPreviousPage(PreviousPage event, Emitter<UserState> emit) async {
+    if (state.skip <= 0 || state.status == UserStatus.loading) return;
+    emit(state.copyWith(skip: state.skip - _limit));
+    add(const FetchUsers());
+  }
+
   Future<void> _onRefreshUsers(RefreshUsers event, Emitter<UserState> emit) async {
+    emit(state.copyWith(skip: 0));
     add(const FetchUsers(isInitialFetch: true));
   }
 
@@ -82,11 +79,9 @@ class UserBloc extends Bloc<UserEvent, UserState> {
   }
 
   void _applyLocalFilters(Emitter<UserState> emit) {
-    // 3. Always create a fresh list copy for local operations
     final List<User> baseUsers = List<User>.from(state.users);
     List<User> filtered = baseUsers;
 
-    // Local Search
     if (state.searchQuery.isNotEmpty) {
       filtered = filtered.where((user) {
         final fullName = user.fullName.toLowerCase();
@@ -95,7 +90,6 @@ class UserBloc extends Bloc<UserEvent, UserState> {
       }).toList();
     }
 
-    // Local Sorting
     if (state.sortOrder == SortOrder.asc) {
       filtered.sort((a, b) => a.fullName.compareTo(b.fullName));
     } else if (state.sortOrder == SortOrder.desc) {
